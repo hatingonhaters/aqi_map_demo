@@ -64,7 +64,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let markers = L.layerGroup().addTo(map);
 let allData = [];
 
-fetch("aqi_data.json")
+fetch("aqi_data_percentile_fixed.json")
   .then(res => res.json())
   .then(data => {
     allData = data;
