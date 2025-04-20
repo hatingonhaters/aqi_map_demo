@@ -1,0 +1,128 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Academic Quality Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+    .dropdown-container {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.4);
+    }
+    .legend {
+      position: absolute;
+      bottom: 30px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border: 2px solid grey;
+      font-size: 14px;
+      z-index: 1000;
+    }
+    .legend i {
+      width: 12px;
+      height: 12px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div class="dropdown-container">
+  <label for="denomSelect">Filter by Denomination:</label>
+  <select id="denomSelect">
+    <option value="All">All Universities</option>
+  </select>
+</div>
+<div class="legend">
+  <b>AQI Tier Legend</b><br>
+  <i style="background:darkgreen"></i> Elite<br>
+  <i style="background:green"></i> Strong<br>
+  <i style="background:lightgreen"></i> Solid<br>
+  <i style="background:orange"></i> Adequate<br>
+  <i style="background:red"></i> Questionable<br>
+  <i style="background:darkred"></i> Weak<br>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<script>
+let map = L.map('map').setView([39.5, -98.35], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18
+}).addTo(map);
+
+let markers = L.layerGroup().addTo(map);
+let allData = [];
+
+fetch("aqi_data.json")
+  .then(res => res.json())
+  .then(data => {
+    allData = data;
+    populateDropdown(data);
+    updateMap("All");
+  });
+
+function getColor(tier) {
+  return {
+    "Elite": "darkgreen",
+    "Strong": "green",
+    "Solid": "lightgreen",
+    "Adequate": "orange",
+    "Questionable": "red",
+    "Weak": "darkred"
+  }[tier] || "gray";
+}
+
+function populateDropdown(data) {
+  const dropdown = document.getElementById("denomSelect");
+  const denoms = [...new Set(data.map(d => d['Denomination']))].sort();
+  denoms.forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d;
+    opt.text = d;
+    dropdown.appendChild(opt);
+  });
+  dropdown.addEventListener("change", () => {
+    updateMap(dropdown.value);
+  });
+}
+
+function updateMap(selected) {
+  markers.clearLayers();
+  const filtered = (selected === "All") ? allData : allData.filter(d => d['Denomination'] === selected);
+  filtered.forEach(d => {
+    const marker = L.circleMarker([+d['Latitude'], +d['Longitude']], {
+      radius: 7,
+      fillColor: getColor(d['AQI Tier']),
+      color: getColor(d['AQI Tier']),
+      weight: 1,
+      fillOpacity: 0.8
+    }).bindPopup(`
+      <b>${d['University']}</b><br>
+      ${d['City']}, ${d['State']}<br>
+      <b>Rank:</b> #${d['AQI Rank']}<br>
+      <b>Denomination:</b> ${d['Denomination']}<br><br>
+      <b>Graduation Rate:</b> ${d['Graduation Rate']}<br>
+      <b>Faculty-to-Student Ratio:</b> ${d['Faculty to Student Ratio']}<br>
+      <b>Faculty per Degree Awarded:</b> ${d['Faculty per Degree Awarded']}<br>
+      <b>Instructional Expenses:</b> ${d['Instructional Expenses']}<br><br>
+      <b>AQI Score:</b> ${parseFloat(d['AQI']).toFixed(4)}<br>
+      <b>AQI Tier:</b> ${d['AQI Tier']}<br>
+      <b>AQI Percentile:</b> ${d['AQI Percentile Display']}
+    `);
+    marker.addTo(markers);
+  });
+}
+</script>
+</body>
+</html>
